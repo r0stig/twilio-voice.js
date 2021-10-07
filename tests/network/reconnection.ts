@@ -89,7 +89,7 @@ describe('Reconnection', function() {
     this.timeout(USE_CASE_TIMEOUT);
 
     before(async () => {
-      await runDockerCommand('connectToDefaultNetwork');
+      await runDockerCommand('resetNetwork');
       await setupDevices();
       /**
        * NOTE(mhuynh): This is a delay to ensure that the call has "settled" and
@@ -98,20 +98,23 @@ describe('Reconnection', function() {
       await new Promise(resolve => setTimeout(resolve, 4000));
     });
 
-    it('should reconnect to signaling after 16 seconds', async () => {
+    it('should reconnect to signaling after 8 seconds', async function() {
+      this.timeout(USE_CASE_TIMEOUT);
+
       await runDockerCommand('disconnectFromAllNetworks');
 
       setTimeout(async () => {
-        await runDockerCommand('connectToDefaultNetwork');
-      }, 16000);
+        await runDockerCommand('resetNetwork');
+      }, 8000);
 
-      await waitFor(bindTestPerCall((call: Call) => expectEvent('reconnected', call)
-          .then(() => assert(call.status() === Call.State.Open))), 20000);
+      await waitFor(Promise.all([call1, call2].map(call => new Promise(res => call.on('reconnected', res)))), 20000);
+
+      assert([call1, call2].every(call => call.status() === Call.State.Open));
     });
 
     after(async () => {
       destroyDevices();
-      await runDockerCommand('connectToDefaultNetwork');
+      await runDockerCommand('resetNetwork');
     });
   });
 
